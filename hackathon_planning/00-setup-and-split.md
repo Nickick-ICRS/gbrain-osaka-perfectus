@@ -112,10 +112,11 @@ If a fixture passes, the slice is done. Build toward the fixtures, not toward "f
 A's foundations have landed (#2 contract, #3 seed skills + fixtures) — B and C build
 against real code; no mock needed.
 
-Status: **C** — Task 2 core DONE: `orchestrate_input` op wired end-to-end (skill catalog +
-hybrid history + LLM selector + custom-skill gate), branch `nick/task2-finish`. Remaining:
-skill execution (deferred — decision support), feedback-loop driver, `routing-eval` fixtures.
-**B** — Task 1 not yet started.
+Status: **C** — Task 2 DONE and merged. `orchestrate_input` (suggest-only) + `orchestrate_run`
+(local-only execution via subagent jobs) + feedback-loop driver + custom-skill gate + LLM
+selector + hybrid history (+ optional `relational` flag) + routing-eval fixtures + 22 unit tests.
+Only remaining step is live-stack validation — run `hackathon_planning/orchestrate-smoke.sh` on
+the LM Studio/Qwen stack (see `task2-evaluation.md`). **B** — Task 1 distiller landed (#7, #10).
 
 ## Demo target (what "done" looks like at the end)
 
