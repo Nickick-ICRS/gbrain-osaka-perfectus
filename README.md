@@ -16,6 +16,8 @@ into a reusable skill.
 
 **🎬 [Demo video →](https://drive.google.com/file/d/19Y3NSdkQR3jDMNJvyeLdOdwY-VXFRp5F/view?usp=drive_link)**
 
+**⏱️ [90-second pitch →](https://drive.google.com/file/d/13by9gRTwoICYlQFVZCQ7EYbbCk6GqGM2/view)**
+
 ---
 
 ## What we built on top of GBrain
