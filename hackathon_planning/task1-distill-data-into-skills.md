@@ -69,18 +69,25 @@ Grouped by next slice; the LLM-key dependency is called out because it gates mos
 - **B. Wire the seams:** ✅ `loadExistingSkills` → real `list_skills`. Remaining: `retrieveBrainData`
   → role-scoped `query`/`search`, and `classify` → **LLM classifier** (needs key; also the only
   real source of `split`).
-- **C. Executors:** create (`skillify scaffold` + agent-authoring), update (`skillopt`/rewrite),
-  split (scaffold two + deprecate + categorize rows). Authoring/rewrite **need the LLM key**.
-  The categorize step is ready (`sync_resolver`).
-- **D. CLI surface:** ✅ `gbrain distill` (single topic) + `gbrain distill-batch` (records/export)
-  + `gbrain sync-resolver` (Step 7) landed.
-- **E. Guardrails:** ✅ distiller decision-eval fixtures + test against the real seed skills.
-  Remaining: conformance gate wired to the create/update executors when they land.
+- **C. Executors:** ✅ `execute.ts` — create / update / split, wired via the `distill_apply` op.
+  Body authoring is an injected seam (a local subagent job); every authored body passes the
+  **TS anonymiser** (`anonymise.ts`) as a hard gate, then `assemble.ts` builds the SKILL.md +
+  routing-eval + manifest entry + RESOLVER row (via `apply-fs.ts`). The deterministic parts are
+  tested with a mock author; the **LLM authoring runs on the local stack** (LM Studio / Qwen).
+- **D. CLI surface:** ✅ `gbrain distill` (single-topic decide) + `gbrain distill-batch`
+  (records/export) + `gbrain sync-resolver` (Step 7) + `gbrain distill-apply` (decide→author→
+  anonymise→land; `--dry-run` for decide-only) landed.
+- **E. Guardrails:** ✅ distiller decision-eval fixtures + test; every generated skill ships a
+  routing-eval stub and is anonymised. Remaining: run `check-resolvable`/conformance after an
+  apply as an automated post-step.
 
-**Keyless slices — ✅ done:** extractor + Almage adapter (A) · `loadExistingSkills` (B) · `distill`
-+ `distill-batch` + `sync-resolver` ops (D) · decision-eval guardrail (E).
-**Next (needs LLM key):** `retrieveBrainData`, the `classify` LLM seam, and the create/update/split
-executors (C).
+**Keyless slices — ✅ done:** extractor + Almage adapter (A) · `loadExistingSkills` (B) ·
+create/update/split executor + anonymiser + assembler (C, deterministic parts) · `distill` /
+`distill-batch` / `sync-resolver` / `distill-apply` ops (D) · decision-eval guardrail (E).
+**Runs on the local stack (no cloud key):** the `distill-apply` authoring subagent + the
+`retrieveBrainData` enrichment.
+**Still v0 / optional:** the `classify` LLM seam in the decider (v0 token-overlap today; the
+local model could replace it for real `split` detection).
 
 ## Reuse, don't build (Phase 0)
 
@@ -105,22 +112,22 @@ MVP each decider as an **LLM call** (via `gbrain agent run`); harden to determin
   v0 is deterministic token overlap; the LLM classifier is an injected seam.
 - Reuse `check-resolvable` MECE for the deterministic exact-trigger case (future pre-filter).
 
-### 3. Create path (Q1 = none) — 🟡 planned by `distiller/run.ts`; executor not wired
-- `distiller` emits the `gbrain skillify scaffold <slug>` action → authoring agent
-  (`gbrain agent run`) fills the stub from retrieved brain data → resolver row auto-appended (exists).
-  Executor + agent-authoring need the LLM key.
+### 3. Create path (Q1 = none) — ✅ landed (`execute.ts` + `distill_apply`)
+- Subagent authors the body → anonymiser hard gate → `assemble.ts` builds SKILL.md + routing-eval
+  → `apply-fs.ts` writes the file, registers the manifest entry, inserts the RESOLVER row.
+  `gbrain distill-apply` runs decide→author→land; `--dry-run` for decide-only. LLM runs local.
 
 ### 4. Exact match (Q2 = no) — ✅ done
-- `distiller` returns `exact_match` ⇒ no-op action. Log and stop.
+- `distiller` returns `exact_match` ⇒ executor no-op. Log and stop.
 
-### 5. Update path (Q3 = no) — 🟡 planned; executor not wired
-- Wrap `skillopt` with an "incorporate new data" benchmark, **or** MVP: agent-run rewrite of the
-  `SKILL.md` body, gated by `routing-eval` + the conformance test. (LLM key.)
+### 5. Update path (Q3 = no) — ✅ landed (`execute.ts` update branch)
+- Reads the existing skill, authors a new body, anonymises it, and **swaps the body while
+  preserving the frontmatter** (name/role/triggers unchanged). No manifest/resolver churn.
 
-### 6. Split executor (Q3 = yes) — net-new — 🟡 decision seam + plan; executor not wired
-- LLM classifier proposes 2 skills → `skillify scaffold` both → deprecate the original → categorize
-  the new resolver rows (MVP: agent performs the functional-area edit per the
-  `functional-area-resolver` playbook at `skills/functional-area-resolver/SKILL.md`).
+### 6. Split executor (Q3 = yes) — ✅ landed (`execute.ts` split branch)
+- Authors + lands each target skill and **deprecates the original** (banner). New rows are
+  inserted under "Patient care"; `gbrain sync-resolver` (Step 7) keeps functional-area
+  categorization tidy afterward.
 
 ### 7. Orchestrator sync — ✅ done (`sync_resolver` op + `resolver-sync.ts`)
 - `skillify scaffold` appends rows under `## Uncategorized`; `gbrain sync-resolver` moves them
