@@ -2319,9 +2319,11 @@ const orchestrate_input: Operation = {
 const ORCHESTRATE_RUN_DESCRIPTION =
   'LOCAL execution path for the patient orchestrator: rank clinical skills AND run them as ' +
   'subagent jobs, feeding outputs back across rounds (the feedback loop). Local-only + ' +
-  'write-scope; requires a running `gbrain jobs work` worker and a chat model. ' +
-  '`orchestrate_input` (read, suggest-only) is the default; this is the explicit opt-in that ' +
-  'actually executes skills. Decision support — review the outputs; not autonomous diagnosis.';
+  'write-scope; needs a chat model. By default it runs each skill via an INLINE in-process ' +
+  'worker (works on PGLite, no `gbrain jobs work` daemon required); pass `worker: true` to ' +
+  'route through a running durable worker instead (Postgres). `orchestrate_input` (read, ' +
+  'suggest-only) is the default; this is the explicit opt-in that actually executes skills. ' +
+  'Decision support — review the outputs; not autonomous diagnosis.';
 
 const orchestrate_run: Operation = {
   name: 'orchestrate_run',
@@ -2347,6 +2349,12 @@ const orchestrate_run: Operation = {
       type: 'boolean',
       description: 'Force the relational recall arm on/off for history retrieval (default: smart).',
     },
+    worker: {
+      type: 'boolean',
+      description:
+        'Execute skills via a running `gbrain jobs work` daemon (Postgres) instead of the ' +
+        'default inline in-process worker. Inline is required on PGLite (no daemon possible).',
+    },
   },
   handler: async (ctx, p) => {
     const input = typeof p.input === 'string' ? p.input.trim() : '';
@@ -2355,7 +2363,8 @@ const orchestrate_run: Operation = {
     }
     const { orchestrateLoop } = await import('./orchestrator/loop.ts');
     const { makeLiveDeps } = await import('./orchestrator/deps-live.ts');
-    const { makeSubagentExecutor, makeQueueJobRunner } = await import('./orchestrator/execute.ts');
+    const { makeSubagentExecutor, makeQueueJobRunner, makeInlineJobRunner } =
+      await import('./orchestrator/execute.ts');
     const { loadRoleBrief, defaultRolesDir } = await import('./orchestrator/role-brief.ts');
     const patientId = typeof p.patient_id === 'string' ? p.patient_id : undefined;
     const model = typeof p.model === 'string' ? p.model : undefined;
@@ -2369,8 +2378,12 @@ const orchestrate_run: Operation = {
     const sc = await import('./skill-catalog.ts');
     const { dir: skillsDir } = sc.resolveSkillsDir(ctx, await sc.readMcpSkillsDir(ctx));
     const rolesDir = defaultRolesDir(skillsDir);
+    // Inline by default so it runs on PGLite (no separate daemon); opt into the
+    // durable worker path with `worker: true` on Postgres deployments.
+    const runner =
+      p.worker === true ? makeQueueJobRunner(ctx.engine) : makeInlineJobRunner(ctx.engine);
     const executor = makeSubagentExecutor({
-      runner: makeQueueJobRunner(ctx.engine),
+      runner,
       model,
       loadBrief: (role) => loadRoleBrief(rolesDir, role),
     });
