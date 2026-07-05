@@ -10,7 +10,8 @@ list of skills to run**. Mirrors the advisor's `collect → rank → report` sha
 
 **For healthcare / patient data we run our OWN custom clinical skills — never generic GBrain
 skills.** See `custom-skills.ts`. The gate is an **allowlist by role**: a skill is eligible only
-if its `SKILL.md` frontmatter declares `role: nurse | psychiatrist | shared`. Every generic
+if its `SKILL.md` frontmatter declares `role: nurse | psychiatrist | general-medicine` (the
+frozen `SkillRole` contract in `skill-frontmatter.ts`). Every generic
 bundled GBrain skill (query, ingest, maintain, …) lacks that role and is therefore ineligible for
 patient routing.
 

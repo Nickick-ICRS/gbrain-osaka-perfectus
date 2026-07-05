@@ -14,16 +14,21 @@
  * path — so routing is ALLOWLIST-by-role, not denylist.
  *
  * The gate is an allowlist: a candidate is eligible iff it declares one of the
- * HEALTHCARE_ROLES in its SKILL.md frontmatter (`role:`). Anything without such a
- * role — which is every generic GBrain skill — is ineligible for patient routing.
- * The GENERIC_GBRAIN_SKILLS list below is documentation + defense-in-depth so a
- * match against one is reported explicitly rather than silently ignored.
+ * canonical SKILL_ROLES in its SKILL.md frontmatter (`role:`). Anything without
+ * such a role — which is every generic GBrain skill — is ineligible for patient
+ * routing. The GENERIC_GBRAIN_SKILLS list below is documentation + defense-in-
+ * depth so a match against one is reported explicitly rather than silently ignored.
  */
 
-import type { CandidateSkill, HealthcareRole } from './types.ts';
+import { SKILL_ROLES } from '../skill-frontmatter.ts';
+import type { CandidateSkill, SkillRole } from './types.ts';
 
-/** Roles that mark a skill as one of OUR reviewed custom clinical skills. */
-export const HEALTHCARE_ROLES: readonly HealthcareRole[] = ['nurse', 'psychiatrist', 'shared'] as const;
+/**
+ * Roles that mark a skill as one of OUR reviewed custom clinical skills. Reuses
+ * the frozen contract (skill-frontmatter.ts `SKILL_ROLES`) so the eligible set
+ * has one source of truth — the selector and the parser can never disagree.
+ */
+export const HEALTHCARE_ROLES: readonly SkillRole[] = SKILL_ROLES;
 
 /**
  * Known generic bundled GBrain skill families. NOT the gate (the role allowlist
@@ -40,7 +45,7 @@ export const GENERIC_GBRAIN_SKILLS: readonly string[] = [
 ] as const;
 
 /** True iff `role` is one of our reviewed clinical roles. */
-export function isHealthcareRole(role: string | undefined): role is HealthcareRole {
+export function isHealthcareRole(role: string | undefined): role is SkillRole {
   return role !== undefined && (HEALTHCARE_ROLES as readonly string[]).includes(role);
 }
 

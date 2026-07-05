@@ -22,6 +22,13 @@ const PSYCH: CandidateSkill = {
   role: 'psychiatrist',
   triggers: ['mood', 'anxiety', 'risk'],
 };
+const GENMED: CandidateSkill = {
+  name: 'patient-history-review',
+  path: 'skills/patient-history-review/SKILL.md',
+  description: 'Review patient history, medications and allergies',
+  role: 'general-medicine',
+  triggers: ['history', 'medication', 'allergies', 'symptoms'],
+};
 const GENERIC: CandidateSkill = {
   name: 'query',
   path: 'skills/query/SKILL.md',
@@ -38,9 +45,13 @@ const deps = (skills: CandidateSkill[]): OrchestratorDeps => ({
 });
 
 describe('custom-skills gate', () => {
-  it('partitions clinical skills from generic', () => {
-    const { custom, generic } = partitionSkills([NURSE, PSYCH, GENERIC]);
-    expect(custom.map((s) => s.name).sort()).toEqual(['nurse-triage', 'psych-risk-screen']);
+  it('partitions clinical skills (incl. general-medicine) from generic', () => {
+    const { custom, generic } = partitionSkills([NURSE, PSYCH, GENMED, GENERIC]);
+    expect(custom.map((s) => s.name).sort()).toEqual([
+      'nurse-triage',
+      'patient-history-review',
+      'psych-risk-screen',
+    ]);
     expect(generic.map((s) => s.name)).toEqual(['query']);
   });
 
@@ -51,12 +62,19 @@ describe('custom-skills gate', () => {
 
 describe('runOrchestrator', () => {
   it('never recommends a generic skill even when it matches the input', async () => {
-    const report = await runOrchestrator(ctx('patient reports symptoms and pain'), deps([NURSE, PSYCH, GENERIC]));
+    const report = await runOrchestrator(
+      ctx('patient reports symptoms and pain'),
+      deps([NURSE, PSYCH, GENMED, GENERIC]),
+    );
     const names = report.recommendations.map((r) => r.skill);
-    expect(names).toContain('nurse-triage');
-    expect(names).not.toContain('query');
+    expect(names).toContain('nurse-triage'); // clinical skill selected
+    expect(names).not.toContain('query'); // generic never selected
     // the generic match is recorded for the audit trail, not run
     expect(report.excluded_generic).toContain('query');
+    // every recommendation carries a canonical clinical role
+    for (const r of report.recommendations) {
+      expect(['nurse', 'psychiatrist', 'general-medicine']).toContain(r.role);
+    }
   });
 
   it('refuses to route (empty recs) when no custom skill exists, with a note', async () => {

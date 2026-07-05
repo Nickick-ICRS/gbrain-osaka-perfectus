@@ -14,7 +14,7 @@
  * (see custom-skills.ts). It must never widen that set.
  */
 
-import type { CandidateSkill, HealthcareRole, OrchestratorContext, SkillRecommendation } from './types.ts';
+import type { CandidateSkill, SkillRole, OrchestratorContext, SkillRecommendation } from './types.ts';
 import { isHealthcareRole } from './custom-skills.ts';
 
 /** Lowercase word tokens, deduped. Crude on purpose — placeholder only. */
@@ -54,7 +54,7 @@ export function selectSkills(
       for (const t of skillTokens) if (inputTokens.has(t)) hits++;
       const denom = Math.max(skillTokens.size, 1);
       const confidence = hits / denom; // 0..1, crude
-      const role: HealthcareRole = isHealthcareRole(s.role) ? s.role : 'shared';
+      const role: SkillRole = isHealthcareRole(s.role) ? s.role : 'general-medicine';
       const rec: SkillRecommendation = {
         skill: s.name,
         role,

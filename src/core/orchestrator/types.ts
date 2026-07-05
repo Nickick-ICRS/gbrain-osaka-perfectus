@@ -8,12 +8,15 @@
  * "given THIS patient input, which skills should run?".
  *
  * IRON RULE (see custom-skills.ts): patient/healthcare data may only be routed
- * to our OWN custom clinical skills (role: nurse | psychiatrist | shared). It is
- * never routed to generic bundled GBrain skills (query, ingest, maintain, …).
+ * to our OWN custom clinical skills (role: nurse | psychiatrist | general-medicine).
+ * It is never routed to generic bundled GBrain skills (query, ingest, maintain, …).
  */
 
-/** The clinical roles our custom skills declare in their frontmatter. */
-export type HealthcareRole = 'nurse' | 'psychiatrist' | 'shared';
+// The care-team role a skill declares in frontmatter. Single source of truth is
+// the frozen contract in skill-frontmatter.ts; re-exported so the rest of the
+// orchestrator imports it locally.
+import type { SkillRole } from '../skill-frontmatter.ts';
+export type { SkillRole };
 
 /** A new patient input the orchestrator must route. */
 export interface PatientInput {
@@ -30,8 +33,8 @@ export interface CandidateSkill {
   name: string;
   path: string;
   description: string;
-  /** From SKILL.md frontmatter `role:`. Undefined for generic GBrain skills. */
-  role?: HealthcareRole | string;
+  /** Raw SKILL.md frontmatter `role:` value. Undefined for generic GBrain skills. */
+  role?: string;
   triggers: string[];
 }
 
@@ -64,7 +67,7 @@ export interface OrchestratorContext {
 /** A single skill the orchestrator recommends running, with its rationale. */
 export interface SkillRecommendation {
   skill: string;
-  role: HealthcareRole;
+  role: SkillRole;
   /** One-line why-this-skill. */
   reason: string;
   /** 0..1 selector confidence. */
