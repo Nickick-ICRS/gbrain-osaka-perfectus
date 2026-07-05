@@ -2490,6 +2490,36 @@ async function resolveChatProvider(modelStr: string): Promise<{ model: any; reci
   return { model, recipe, modelId: parsed.modelId };
 }
 
+/**
+ * Wrap a fetch so chat/completions requests that carry `tools` are sent with
+ * `parallel_tool_calls: false`. Local openai-compatible models (e.g. qwen via
+ * LM Studio) otherwise emit several tool calls in one turn with IDs the round
+ * trip can't reconcile ("tool results are missing for tool calls …"), which
+ * breaks any multi-lookup skill. Forcing one tool call per turn round-trips
+ * cleanly. Only touches requests that already declare tools; non-tool chat and
+ * embedding requests pass through untouched. Respects an explicit setting if a
+ * caller already provided one.
+ */
+function withSequentialToolCalls(baseFetch: typeof fetch): typeof fetch {
+  return (async (input: any, init: any) => {
+    if (init && typeof init.body === 'string') {
+      try {
+        const body = JSON.parse(init.body);
+        if (
+          body && Array.isArray(body.tools) && body.tools.length > 0 &&
+          body.parallel_tool_calls === undefined
+        ) {
+          body.parallel_tool_calls = false;
+          init = { ...init, body: JSON.stringify(body) };
+        }
+      } catch {
+        // Body isn't JSON we can parse — leave the request untouched.
+      }
+    }
+    return baseFetch(input, init);
+  }) as typeof fetch;
+}
+
 function instantiateChat(recipe: Recipe, modelId: string, cfg: AIGatewayConfig): any {
   switch (recipe.implementation) {
     case 'native-openai': {
@@ -2512,10 +2542,13 @@ function instantiateChat(recipe: Recipe, modelId: string, cfg: AIGatewayConfig):
       const auth = applyResolveAuth(recipe, cfg, 'chat');
       // v0.32: env-templated base URL + optional fetch wrapper.
       const compat = applyOpenAICompatConfig(recipe, cfg);
+      // Force sequential tool calls for openai-compatible chat (local models
+      // mishandle parallel tool calls). Wraps the recipe's fetch, or global fetch.
+      const chatFetch = withSequentialToolCalls(compat.fetch ?? fetch);
       return createOpenAICompatible({
         name: recipe.id,
         baseURL: compat.baseURL,
-        ...(compat.fetch ? { fetch: compat.fetch } : {}),
+        fetch: chatFetch,
         ...auth,
       }).languageModel(modelId);
     }
