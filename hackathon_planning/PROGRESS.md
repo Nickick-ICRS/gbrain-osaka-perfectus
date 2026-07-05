@@ -18,7 +18,7 @@ Full setup detail: [LOCAL-MODELS-SETUP.md](./LOCAL-MODELS-SETUP.md). Task specs:
 | Task 2 execution — inline executor | ✅ done | added `makeInlineJobRunner` (execute.ts); `orchestrate_run` now runs skills via an in-process worker (works on PGLite, no daemon). `worker:true` opts into the Postgres daemon path. |
 | Task 2 execution — skill run reliability | ⚠️ blocked on model | Applied `parallel_tool_calls:false` (fetch-injected for openai-compat chat, `gateway.ts`) + bumped executor turns to 18. **LM Studio/Qwen honors it only intermittently** (3 test runs: 1 went sequential but hit max_turns empty, 2 still emitted parallel calls → `tool results are missing…`). So multi-lookup skill execution is still unreliable **with this model/server**. Root cause is local tool-calling, not gbrain. Fix: a model/server with solid tool-calling (e.g. vLLM's `--tool-call-parser`), or single-lookup skills. |
 | Runnable toolkit | ✅ done | `hackathon_toolkit/` — one folder of scripts: status / import / learn-skill / select / run / smoke (+ `env.sh`, `README.md`) |
-| routing-eval fixtures for new skills | ⏳ todo | new skills lack `routing-eval.jsonl` (seed skills have them) |
+| routing-eval fixtures for new skills | ✅ done | both distilled skills ship `routing-eval.jsonl` (8 cases each), same paraphrase rule as the seeds |
 | Clinician review of drafts | ⏳ todo | drafts are candidates, not final (APPI / decision-support) |
 | Remaining raw files | ⏳ optional | KPI + questionnaire `.docx`, 4 "Public Paper" `.pdf` not yet converted |
 
@@ -125,7 +125,7 @@ raw .docx/.pdf/.xlsx ──docx2md.py──▶ Processed Data/*.md ──gbrain 
 **Brain pages (7):** `agents_01_geriatric_care_assistant_asg_pasa_en`,
 `agents_02_psychomotor_therapist_pasa_en`, `agents_03_psychologist_pasa_en`,
 `agents_04_pasa_asg_daily_organization_protocol_en`, `data_-_hackathon_data_1` (EHR export),
-`data_-_hackathon_data_2_en` (Mr. OG transmission log), `data_-_hackathon_data_3_en` (caregiver study).
+`data_-_hackathon_data_2_en` (resident transmission log), `data_-_hackathon_data_3_en` (caregiver study).
 
 **Patient-care skills (5) in `skills/RESOLVER.md`:** `nurse-triage`, `psych-risk-screen`,
 `patient-history-review` (seeds) + `nurse-behavioral-fall-risk`, `psych-caregiver-burden-support` (distilled).
@@ -140,9 +140,10 @@ raw .docx/.pdf/.xlsx ──docx2md.py──▶ Processed Data/*.md ──gbrain 
    (`--enable-auto-tool-choice --tool-call-parser hermes`) or another server with robust
    tool-call handling, OR keep skills single-lookup (one tool call per turn round-trips
    cleanly — proven by `distill-skill.sh`). Selector (`select.sh`) already works reliably.
-2. Add `routing-eval.jsonl` fixtures to the 2 new skills (input → expected skill).
-3. Clinician review of distilled drafts before treating them as more than candidates.
-4. (Optional) distill more skills — one `learn-skill.sh` run each.
+2. Clinician review of distilled drafts before treating them as more than candidates.
+3. (Optional) distill more skills — one `learn-skill.sh` run each. The 4 "Public Paper"
+   PDFs (BPSD best-practice guidelines) are the next distillation source — see the
+   consolidated 22-skill catalog analysis; they're public guidelines, so no PII risk.
 
 ## Everyday commands (see hackathon_toolkit/README.md)
 
