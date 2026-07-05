@@ -1,0 +1,5 @@
+# Track this folder, ignore its data contents.
+# Everything in here is local raw data / the brain database — never committed.
+*
+!.gitignore
+!README.md
