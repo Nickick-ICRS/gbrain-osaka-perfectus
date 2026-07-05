@@ -25,6 +25,7 @@ import { bumpLastRetrievedAt } from './last-retrieved.ts';
 import { isSearchMode } from './search/mode.ts';
 import { stampEvidence } from './search/evidence.ts';
 import type { SearchResult } from './types.ts';
+import type { CandidateTopic } from './distiller/types.ts';
 import { CJK_SLUG_CHARS } from './cjk.ts';
 import * as db from './db.ts';
 import { VERSION } from '../version.ts';
@@ -2434,6 +2435,59 @@ const advisor: Operation = {
   // No cliHints: the CLI surface is the richer `gbrain advisor` command
   // (commands/advisor.ts) which adds --json exit codes + --apply.
   cliHints: { name: 'advisor', hidden: true },
+};
+
+const distill: Operation = {
+  name: 'distill',
+  description:
+    'Task 1 data→skills decider (v0, keyless). Given a candidate TOPIC distilled from brain ' +
+    'data (title + summary + care role), decide what to do with the skill library: none ' +
+    '(create), exact_match (no-op), update, or split — returning a proposed action, never a ' +
+    "side effect. Compares only within the topic's care lane. APPI: role must be a clinical " +
+    'role (nurse|psychiatrist|general-medicine); patient-derived topics never become generic ' +
+    'skills. localOnly: skill authoring over patient data is not exposed over MCP.',
+  params: {
+    title: { type: 'string', required: true, description: 'Candidate topic title (also the basis for a new skill slug).' },
+    summary: { type: 'string', required: true, description: 'What the topic is about — distilled from the brain data.' },
+    role: { type: 'string', required: true, description: 'Care lane: nurse | psychiatrist | general-medicine.' },
+    triggers: { type: 'array', description: 'Optional candidate trigger phrases.', items: { type: 'string' } },
+    source_ids: { type: 'array', description: 'Optional provenance: brain page/source ids (audit trail).', items: { type: 'string' } },
+  },
+  handler: async (ctx, p) => {
+    const title = typeof p.title === 'string' ? p.title : '';
+    const summary = typeof p.summary === 'string' ? p.summary : '';
+    const role = typeof p.role === 'string' ? p.role : '';
+    const triggers = Array.isArray(p.triggers)
+      ? p.triggers.filter((t): t is string => typeof t === 'string')
+      : undefined;
+    const sourceIds = Array.isArray(p.source_ids)
+      ? p.source_ids.filter((t): t is string => typeof t === 'string')
+      : undefined;
+
+    const { SKILL_ROLES } = await import('./skill-frontmatter.ts');
+    if (!(SKILL_ROLES as readonly string[]).includes(role)) {
+      throw new OperationError(
+        'invalid_params',
+        `role must be one of: ${SKILL_ROLES.join(', ')}`,
+        `Got '${role}'. Patient-derived topics only become clinical skills (APPI).`,
+      );
+    }
+
+    // Resolve the skills dir the same way list_skills does (local read-only path).
+    const sc = await import('./skill-catalog.ts');
+    const override = await sc.readMcpSkillsDir(ctx);
+    const { dir } = sc.resolveSkillsDir(ctx, override);
+
+    const { loadExistingSkills } = await import('./distiller/load-skills.ts');
+    const { runDistiller } = await import('./distiller/run.ts');
+    const topic: CandidateTopic = { title, summary, role: role as CandidateTopic['role'], triggers, sourceIds };
+    return runDistiller(topic, { loadExistingSkills: async () => loadExistingSkills(dir) });
+  },
+  scope: 'read',
+  // localOnly: distillation reads the skill catalog and reasons over patient-
+  // derived topics to author skills — a local authoring workflow, never remote.
+  localOnly: true,
+  cliHints: { name: 'distill', positional: ['title'] },
 };
 
 /**
@@ -5388,6 +5442,8 @@ export const operations: Operation[] = [
   list_skills, get_skill, list_brain_skillpack, advisor,
   // Task 2: patient orchestrator — rank clinical skills for a new patient input (read-scope)
   orchestrate_input,
+  // Task 1: distiller — decide create/update/split for a data-derived topic (read, localOnly)
+  distill,
   // v0.41.19.0: thin-client `gbrain status` payload (admin-scope, sync + cycle only)
   get_status_snapshot,
   // Sync

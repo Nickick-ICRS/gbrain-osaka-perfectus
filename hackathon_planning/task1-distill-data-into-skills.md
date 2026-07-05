@@ -41,7 +41,13 @@ injected seams, so it runs with **no DB and no LLM**:
 - **`distiller/types.ts`** — reuses the frozen `SkillRole` contract, so decider and parser can't drift.
 - Returns a **plan** (`DistillReport`), not side effects — executing scaffold/skillopt/resolver-sync
   is CLI-side, exactly as the orchestrator returns a report rather than running `gbrain agent run`.
-- Container-verified (`oven/bun:1`): distiller tests + `bun run typecheck` green.
+- **`distiller/load-skills.ts`** — real `loadExistingSkills` over a resolved skills dir, reusing
+  `list_skills`' own primitives so the decider sees exactly what `list_skills` reports.
+- **`distiller/extract.ts`** — deterministic topic extractor: clusters `BrainRecord`s by care
+  lane + stable key into `CandidateTopic`s. APPI: non-clinical records dropped + counted.
+- **`distill` op** (`operations.ts`, `localOnly`, `read`) → `gbrain distill "<title>" --summary …
+  --role …` runs the v0 decider against the real skill catalog. Keyless, end-to-end.
+- Container-verified (`oven/bun:1`): distiller + op-guard tests + `bun run typecheck` green.
 
 ## What's left after the distiller
 
@@ -55,14 +61,15 @@ Grouped by next slice; the LLM-key dependency is called out because it gates mos
   source of `split`).
 - **C. Executors:** create (`skillify scaffold` + agent-authoring), update (`skillopt`/rewrite),
   split (scaffold two + deprecate + categorize rows). Authoring/rewrite **need the LLM key**.
-- **D. CLI surface:** a `gbrain distill` verb + an op in `operations.ts` (shared file — Dev A
-  arbitrates) so CLI + MCP are generated. The op running the v0 decider is buildable keyless.
+- **D. CLI surface:** ✅ `gbrain distill` op landed (`operations.ts`, `localOnly read`, runs the
+  v0 decider against the real catalog). Remaining: a batch mode that takes extracted topics /
+  a records file rather than a single topic.
 - **E. Guardrails:** `routing-eval` fixtures for representative nurse/psych topics; conformance +
   typecheck gates before any generated skill lands.
 
-**Next buildable slice (keyless):** A (deterministic) + `loadExistingSkills` wiring + the
-`gbrain distill` op → a runnable command that reads real skills and emits real v0 decisions,
-before spending on an LLM.
+**Keyless slice — ✅ done:** deterministic extractor (A) + real `loadExistingSkills` (B) + the
+`gbrain distill` op (D). A runnable command that reads real skills and emits real v0 decisions.
+**Next (needs LLM key):** the `classify` LLM seam + the create/update/split executors (C).
 
 ## Reuse, don't build (Phase 0)
 
