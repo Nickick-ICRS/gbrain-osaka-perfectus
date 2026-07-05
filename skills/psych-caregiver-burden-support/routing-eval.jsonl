@@ -1,0 +1,11 @@
+// Routing eval fixtures for skills/psych-caregiver-burden-support (Task 1 distilled).
+// Each line: {intent, expected_skill, ambiguous_with?}.
+// Rule: intent must PARAPHRASE the trigger (contain it in context), never copy it verbatim.
+{"intent": "The resident's daughter reports exhaustion and guilt since admission, how do we assess her caregiver burden", "expected_skill": "psych-caregiver-burden-support"}
+{"intent": "A spouse shows rising caregiver anxiety and poor sleep since the move to long-term care, what is the pathway", "expected_skill": "psych-caregiver-burden-support", "ambiguous_with": ["psych-risk-screen"]}
+{"intent": "Family distress keeps escalating at every visit and the son has asked for help coping", "expected_skill": "psych-caregiver-burden-support"}
+{"intent": "Screening suggests caregiver depression in the resident's main family contact, which scales and referral apply", "expected_skill": "psych-caregiver-burden-support", "ambiguous_with": ["psych-risk-screen"]}
+{"intent": "The wife describes growing visit difficulty and leaves in tears each time, should we plan a family meeting", "expected_skill": "psych-caregiver-burden-support"}
+{"intent": "The struggling family member needs caregiver support while adjusting to the placement decision", "expected_skill": "psych-caregiver-burden-support"}
+{"intent": "Quantify the caregiver burden with the standard scales and set a follow-up schedule for re-assessment", "expected_skill": "psych-caregiver-burden-support"}
+{"intent": "Arrange ongoing caregiver support and re-check the family member's stress scores after the therapy programme starts", "expected_skill": "psych-caregiver-burden-support"}

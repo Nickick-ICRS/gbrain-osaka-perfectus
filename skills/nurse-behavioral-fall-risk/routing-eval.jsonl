@@ -1,0 +1,11 @@
+// Routing eval fixtures for skills/nurse-behavioral-fall-risk (Task 1 distilled).
+// Each line: {intent, expected_skill, ambiguous_with?}.
+// Rule: intent must PARAPHRASE the trigger (contain it in context), never copy it verbatim.
+{"intent": "A resident shows worsening agitation during evening care and keeps trying to get out of bed unassisted", "expected_skill": "nurse-behavioral-fall-risk"}
+{"intent": "Night staff found the resident wandering the corridors again and trying the exit door, how do we assess this", "expected_skill": "nurse-behavioral-fall-risk"}
+{"intent": "Can we get a post-fall review for yesterday's bathroom fall, the team suspects behavioural contributors", "expected_skill": "nurse-behavioral-fall-risk"}
+{"intent": "The resident gets restless every day around sunset, classic sundowning pattern, what should we monitor", "expected_skill": "nurse-behavioral-fall-risk"}
+{"intent": "There has been a clear behavioral change this week, refusing hygiene care and rushing to the toilet", "expected_skill": "nurse-behavioral-fall-risk"}
+{"intent": "With severe cognitive impairment but preserved mobility, what is this resident's fall risk during transfers", "expected_skill": "nurse-behavioral-fall-risk"}
+{"intent": "Handover keeps flagging morning agitation before rounds, can we get a structured behavioural risk summary", "expected_skill": "nurse-behavioral-fall-risk"}
+{"intent": "Assess the fall risk for a resident whose wandering peaks between workshops and mealtimes", "expected_skill": "nurse-behavioral-fall-risk"}
