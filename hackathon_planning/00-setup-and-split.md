@@ -7,7 +7,7 @@ Coordination doc for 3 devs working Task 1 + Task 2 in parallel. Read before pic
 
 > Scope note: excludes the database/engine layer. Retrieval + storage are a given black box.
 >
-> **The database and all raw/patient data live in [`raw_data/`](../raw_data/)** — a tracked
+> **The database and all raw/patient data live in [`hackathon_raw_data/`](../hackathon_raw_data/)** — a tracked
 > folder whose contents are gitignored. Point `gbrain` at it locally; never commit its contents.
 
 ## The one thing that will bite us: shared files
@@ -60,7 +60,7 @@ T2's selector ranks skills that T1 tags with `role`. So foundations gate everyth
 
 ## Seed data + eval fixtures = shared definition of done
 
-Even minus the DB, both tasks need content to run against (keep it all in `raw_data/`). Write
+Even minus the DB, both tasks need content to run against (keep it all in `hackathon_raw_data/`). Write
 these up front — they double as the demo script:
 - **T1:** sample brain data to distill (a few nurse + psychiatrist notes/records).
 - **T2:** sample patient inputs + history (input → expected skills), as `routing-eval` fixtures.
@@ -70,7 +70,7 @@ If a fixture passes, the slice is done. Build toward the fixtures, not toward "f
 ## Environment baseline (everyone, before starting)
 
 - [ ] `bun install`
-- [ ] `raw_data/` populated locally with the brain DB + dataset (gitignored — get it out-of-band)
+- [ ] `hackathon_raw_data/` populated locally with the brain DB + dataset (gitignored — get it out-of-band)
 - [ ] `bun run typecheck` green
 - [ ] `gbrain smoke-test` green
 - [ ] LLM API key + model config set (both tasks call `gbrain agent run`)

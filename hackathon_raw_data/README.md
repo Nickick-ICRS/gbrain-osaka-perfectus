@@ -1,4 +1,4 @@
-# raw_data/
+# hackathon_raw_data/
 
 Local raw data + **the brain database** live here. The folder is tracked; its contents are
 **gitignored** (see `.gitignore` — only `.gitignore` and this `README.md` are committed).
@@ -18,5 +18,5 @@ exists on a fresh clone.
 
 ## Setup
 
-Each dev creates/populates their own `raw_data/` locally. Nothing here syncs via git — share the
+Each dev creates/populates their own `hackathon_raw_data/` locally. Nothing here syncs via git — share the
 dataset out-of-band (secure transfer), not through the repo.
