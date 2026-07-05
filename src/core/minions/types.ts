@@ -417,6 +417,14 @@ export interface SubagentHandlerData {
    * time, not silently ignored. Empty array = no tools.
    */
   allowed_tools?: string[];
+  /**
+   * Run with NO tools — a single synthesis turn (the tool loop is skipped
+   * entirely). Use when the prompt already contains everything the agent needs
+   * (e.g. the skill body + context inlined). Local openai-compatible models
+   * mishandle multi/parallel tool calls (ID-reconciliation errors); a toolless
+   * synthesis turn round-trips reliably on any provider. Wins over allowed_tools.
+   */
+  no_tools?: boolean;
   /** System prompt override. When omitted, the handler builds one. */
   system?: string;
   /** Template variables for subagent_def. Arbitrary JSON-serializable. */

@@ -15,6 +15,8 @@
  * Decision support, not autonomous diagnosis.
  */
 
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import type { BrainEngine } from '../engine.ts';
 import type { SkillRole } from '../skill-frontmatter.ts';
 import type {
@@ -29,6 +31,8 @@ export interface SubagentSpec {
   prompt: string;
   model?: string;
   maxTurns?: number;
+  /** Run with NO tools — a single synthesis turn (see SubagentHandlerData.no_tools). */
+  noTools?: boolean;
 }
 
 /** Terminal result of a subagent run. */
@@ -55,12 +59,76 @@ export interface SubagentExecutorOpts {
    * no brief (base prompt only). Omit in tests that don't exercise priming.
    */
   loadBrief?: (role: SkillRole) => string;
+  /**
+   * When set, execute in TOOLLESS-SYNTHESIS mode: the skill's SKILL.md body is
+   * read from `<skillsDir>/<slug>/SKILL.md` and inlined into the prompt, and the
+   * subagent runs with NO tools (a single synthesis turn). This is the reliable
+   * path on local openai-compatible models — the tool loop's multi/parallel
+   * tool-call ID reconciliation breaks qwen-via-LM-Studio (27b crashes; the MoE
+   * gives up on get_skill and improvises). Inlining the skill + dropping tools
+   * removes both failure modes. Omit → legacy tool-driven subagent (get_skill →
+   * follow steps), kept for Postgres/robust-tool-calling deployments + tests.
+   */
+  skillsDir?: string;
 }
 
 // Higher than a plain chat loop: with parallel tool calls forced OFF (local
 // models mishandle them), a multi-lookup clinical skill spends one turn per
 // lookup, so it needs more turns to reach a final synthesis before max_turns.
 const DEFAULT_MAX_TURNS = 18;
+
+/** Read a skill's SKILL.md body (frontmatter stripped) for inlining. '' if absent. */
+function loadSkillBody(skillsDir: string, slug: string): string {
+  try {
+    const p = join(skillsDir, slug, 'SKILL.md');
+    if (!existsSync(p)) return '';
+    return readFileSync(p, 'utf-8').replace(/^---\n[\s\S]*?\n---\n?/, '').trim();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Toolless-synthesis prompt: role brief + the full skill body + patient input +
+ * prior-round outputs, with an explicit "you have no tools, synthesize now"
+ * instruction. Everything the agent needs is inlined, so no tool calls are made.
+ */
+function inlinedPrompt(
+  rec: SkillRecommendation,
+  ctx: OrchestratorContext,
+  brief: string,
+  skillBody: string,
+): string {
+  const stateLine =
+    ctx.input.state && Object.keys(ctx.input.state).length
+      ? `Current structured state: ${JSON.stringify(ctx.input.state)}`
+      : '';
+  const prior = (ctx.priorSkillOutputs ?? [])
+    .filter((o) => !String(o.summary).startsWith('[execution failed'))
+    .map((o) => `- ${o.skill}: ${o.summary}`)
+    .join('\n');
+  const priorBlock = prior
+    ? `\nDecision-support already produced this session (build on it, don't repeat):\n${prior}\n`
+    : '';
+  return [
+    brief ? `You are acting in this care-team role. Stay strictly within its scope.\n\n${brief}\n` : '',
+    `# Skill to run: ${rec.skill} (role: ${rec.role})`,
+    'Follow this skill exactly to produce its decision-support output:',
+    '',
+    '----- SKILL -----',
+    skillBody,
+    '----- END SKILL -----',
+    '',
+    `Patient input: ${ctx.input.text}`,
+    stateLine,
+    priorBlock,
+    "You have NO tools and need none — everything required is above. Produce the skill's " +
+      'structured decision-support output now, grounded in the patient input. This is decision ' +
+      'support for a licensed clinician to confirm — never a diagnosis or an order.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
 
 function defaultPrompt(rec: SkillRecommendation, ctx: OrchestratorContext): string {
   const stateLine =
@@ -103,15 +171,27 @@ export function makeSubagentExecutor(opts: SubagentExecutorOpts): SkillExecutor 
     return b;
   };
   return async (rec, ctx): Promise<SkillOutput> => {
-    const base = build(rec, ctx);
     const brief = briefFor(rec.role);
-    const prompt = brief
-      ? `You are acting in this role. Stay within its scope.\n\n${brief}\n\n---\n\n${base}`
-      : base;
+    // Toolless-synthesis mode (skillsDir set + skill body found): inline the skill
+    // and run with no tools — reliable on local models. Falls back to the legacy
+    // tool-driven prompt if the body can't be read or skillsDir is absent.
+    const skillBody = opts.skillsDir ? loadSkillBody(opts.skillsDir, rec.skill) : '';
+    let prompt: string;
+    let noTools = false;
+    if (skillBody) {
+      prompt = inlinedPrompt(rec, ctx, brief, skillBody);
+      noTools = true;
+    } else {
+      const base = build(rec, ctx);
+      prompt = brief
+        ? `You are acting in this role. Stay within its scope.\n\n${brief}\n\n---\n\n${base}`
+        : base;
+    }
     const res = await opts.runner({
       prompt,
       model: opts.model,
       maxTurns: opts.maxTurns ?? DEFAULT_MAX_TURNS,
+      noTools,
     });
     if (res.status !== 'completed') {
       return { skill: rec.skill, summary: `[execution failed: ${res.error ?? 'unknown error'}]` };
@@ -157,6 +237,7 @@ export function makeQueueJobRunner(engine: BrainEngine, opts: QueueRunnerOpts = 
     const data: Record<string, unknown> = { prompt: spec.prompt };
     if (spec.model) data.model = spec.model;
     if (spec.maxTurns) data.max_turns = spec.maxTurns;
+    if (spec.noTools) data.no_tools = true;
 
     const job = await queue.add('subagent', data, { max_stalled: 3 }, { allowProtectedSubmit: true });
 
@@ -208,6 +289,7 @@ export function makeInlineJobRunner(engine: BrainEngine, opts: QueueRunnerOpts =
     const data: Record<string, unknown> = { prompt: spec.prompt };
     if (spec.model) data.model = spec.model;
     if (spec.maxTurns) data.max_turns = spec.maxTurns;
+    if (spec.noTools) data.no_tools = true;
     const job = await queue.add('subagent', data, { max_stalled: 3 }, { allowProtectedSubmit: true });
 
     // Ephemeral in-process worker on the default queue. healthCheckInterval: 0 —

@@ -16,9 +16,11 @@ Full setup detail: [LOCAL-MODELS-SETUP.md](./LOCAL-MODELS-SETUP.md). Task specs:
 | Anonymisation of generated skills | ✅ done | `distill-skill.sh` runs the authored body through `anonymise.py` (hard gate — aborts on residual PII). Both skills regenerated clean. |
 | Task 2 selector (`gbrain orchestrate`) | ✅ done | LLM selector works on local Qwen — verified 5/5 (nurse-triage / psych-risk-screen / patient-history-review + generic-refused) |
 | Task 2 execution — inline executor | ✅ done | added `makeInlineJobRunner` (execute.ts); `orchestrate_run` now runs skills via an in-process worker (works on PGLite, no daemon). `worker:true` opts into the Postgres daemon path. |
-| Task 2 execution — skill run reliability | ⚠️ blocked on model | Applied `parallel_tool_calls:false` (fetch-injected for openai-compat chat, `gateway.ts`) + bumped executor turns to 18. **LM Studio/Qwen honors it only intermittently** (3 test runs: 1 went sequential but hit max_turns empty, 2 still emitted parallel calls → `tool results are missing…`). So multi-lookup skill execution is still unreliable **with this model/server**. Root cause is local tool-calling, not gbrain. Fix: a model/server with solid tool-calling (e.g. vLLM's `--tool-call-parser`), or single-lookup skills. |
+| Task 2 execution — skill run reliability | ✅ **fixed** (toolless synthesis) | Root cause: the tool loop's multi/parallel tool-call ID reconciliation breaks local Qwen (27b crashes with `tool results are missing…`; the MoE gives up on `get_skill` and improvises). **Fix:** `orchestrate_run` now runs skills as **toolless synthesis** — the skill's `SKILL.md` body is inlined into the prompt (+ role brief + patient input + prior-round outputs) and the subagent runs with `no_tools:true` (new flag; single chat turn, no tool loop). Verified on the 27b (previously-crashing) model: single- and 2-round runs, **0 crashes**, real skill-grounded output (agitation/elopement/fall structure; caregiver-burden). 176/176 unit tests pass. Files: `execute.ts` (inline + `skillsDir`/`noTools`), `subagent.ts`+`types.ts` (`no_tools`), `operations.ts` (wire `skillsDir`). Legacy tool-driven path kept for Postgres/robust-tool-calling deployments. |
 | Runnable toolkit | ✅ done | `hackathon_toolkit/` — one folder of scripts: status / import / learn-skill / select / run / smoke (+ `env.sh`, `README.md`) |
 | routing-eval fixtures for new skills | ✅ done | both distilled skills ship `routing-eval.jsonl` (8 cases each), same paraphrase rule as the seeds |
+| Orchestration evaluated end-to-end (2026-07-05) | ✅ done | **Unit:** 176/176 orchestrator+distiller+subagent tests pass. **Selector:** routes to the *distilled* skills (`nurse-behavioral-fall-risk` @0.95 for agitation/wandering/near-fall). **Loop (`orchestrate-run`):** rank → role-brief-primed **toolless** execute → feedback → re-rank → stops `stable`; skill execution now reliable on the 27b (see the ✅ fixed row above). |
+| Temporal backtest (PR #19) on real history | ✅ works (data now populated) | Chronicle was empty (`Timeline: 0`) — `extract timeline --source db` doesn't parse the transmission-log format, so Mr. OG's 41 dated entries were loaded via scripted `timeline-add` (kept in the brain). Deterministic: **40 cuts, passRate 0.9**. LLM selector (6 cuts, local Qwen): passRate 0.5, clinically sensible per-cut picks (admission day → nurse-triage + patient-history-review). Caveats: `--execute` uses the **queue** runner (Postgres daemon) — suggest-only on PGLite; PGLite = one process, don't run backtest while another gbrain command holds the lock. |
 | Clinician review of drafts | ⏳ todo | drafts are candidates, not final (APPI / decision-support) |
 | Remaining raw files | ⏳ optional | KPI + questionnaire `.docx`, 4 "Public Paper" `.pdf` not yet converted |
 
@@ -134,16 +136,14 @@ raw .docx/.pdf/.xlsx ──docx2md.py──▶ Processed Data/*.md ──gbrain 
 
 ## Next steps
 
-1. **Fix skill-execution reliability** (the ⚠️ above). `parallel_tool_calls:false` is now
-   injected but LM Studio/Qwen ignores it intermittently, so `run.sh` is still flaky for
-   multi-lookup skills. Real fix is model/server-side: serve the chat model via **vLLM**
-   (`--enable-auto-tool-choice --tool-call-parser hermes`) or another server with robust
-   tool-call handling, OR keep skills single-lookup (one tool call per turn round-trips
-   cleanly — proven by `distill-skill.sh`). Selector (`select.sh`) already works reliably.
+1. ~~Fix skill-execution reliability~~ **DONE** — `run.sh` / `orchestrate-run` now execute
+   reliably via toolless synthesis (see the ✅ fixed row above). Selector + execution both
+   work on the local Qwen 27b. (`--execute` on the *backtest* still uses the queue runner —
+   a one-line follow-up to reuse the inline runner there too.)
 2. Clinician review of distilled drafts before treating them as more than candidates.
 3. (Optional) distill more skills — one `learn-skill.sh` run each. The 4 "Public Paper"
-   PDFs (BPSD best-practice guidelines) are the next distillation source — see the
-   consolidated 22-skill catalog analysis; they're public guidelines, so no PII risk.
+   PDFs (BPSD best-practice guidelines) are the next distillation source — public guidelines,
+   so no PII risk.
 
 ## Everyday commands (see hackathon_toolkit/README.md)
 
