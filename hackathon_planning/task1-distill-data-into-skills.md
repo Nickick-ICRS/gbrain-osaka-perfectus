@@ -1,5 +1,8 @@
 # Task 1 — Distill existing data into skills
 
+> **Start here:** read [`00-setup-and-split.md`](./00-setup-and-split.md) for the frozen
+> interface contract, shared-file ownership, and the 3-way split before picking up work.
+
 Turn stored brain data into reusable **Nurse** and **Psychiatrist** skills, deciding per
 candidate topic whether to create, leave as-is, update, or split a skill — and keep the
 orchestrator (RESOLVER) in sync.

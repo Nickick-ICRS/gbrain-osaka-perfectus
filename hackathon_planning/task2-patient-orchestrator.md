@@ -1,5 +1,8 @@
 # Task 2 — Patient orchestrator
 
+> **Start here:** read [`00-setup-and-split.md`](./00-setup-and-split.md) for the frozen
+> interface contract, shared-file ownership, and the 3-way split before picking up work.
+
 Take new patient input, weigh it against historical information + current state, and suggest
 which skills to run — feeding each skill's output back so later routing can build on earlier
 results.
