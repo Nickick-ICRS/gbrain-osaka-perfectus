@@ -14,6 +14,8 @@ into a reusable skill.
 
 **📊 [Pitch deck →](https://drive.google.com/file/d/1SJUdItG-fjprLd3IHqE6g2V8fY4yH7P_/view)**
 
+**🎬 [Demo video →](https://drive.google.com/file/d/19Y3NSdkQR3jDMNJvyeLdOdwY-VXFRp5F/view?usp=drive_link)**
+
 ---
 
 ## What we built on top of GBrain
