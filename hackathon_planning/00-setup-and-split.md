@@ -4,6 +4,7 @@ Coordination doc for 3 devs working Task 1 + Task 2 in parallel. Read before pic
 
 - **Task 1** — [distill data into skills](./task1-distill-data-into-skills.md)
 - **Task 2** — [patient orchestrator](./task2-patient-orchestrator.md)
+- **Task 4** — [agent head-to-head (care-team debate)](./task4-agent-debate.md)
 
 > Scope note: excludes the database/engine layer. Retrieval + storage are a given black box.
 >
