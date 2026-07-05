@@ -44,6 +44,9 @@ input.
 
 ### 2. Skill selector — the missing hinge
 - MVP: LLM ranks `list_skills` (descriptions + triggers) given `(input + history)`.
+- `list_skills` now carries `role` (`nurse | psychiatrist | general-medicine`, landed #2) —
+  filter/weight candidates by the target care lane before ranking. Import `SKILL_ROLES`
+  from `src/core/skill-frontmatter.ts`; don't hardcode the set.
 - This is exactly the seat the unimplemented `routing-eval --llm` placeholder was left for —
   `src/commands/routing-eval.ts:14`.
 - Harden later: embedding similarity between input and skill descriptions; deterministic
