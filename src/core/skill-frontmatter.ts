@@ -35,15 +35,16 @@
  * Care-team role a skill belongs to. The T2 patient orchestrator ranks skills
  * by this field, so it is a FROZEN interface contract (see
  * hackathon_planning/00-setup-and-split.md):
- *   - `nurse`        — nursing decision-support skills.
- *   - `psychiatrist` — psychiatric decision-support skills.
- *   - `shared`       — role-agnostic; eligible for either lane.
+ *   - `nurse`            — nursing decision-support skills.
+ *   - `psychiatrist`     — psychiatric decision-support skills.
+ *   - `general-medicine` — generalist care; the default lane, selectable
+ *                          alongside a nurse or psychiatrist skill.
  */
-export type SkillRole = 'nurse' | 'psychiatrist' | 'shared';
+export type SkillRole = 'nurse' | 'psychiatrist' | 'general-medicine';
 
 /** Canonical role values. Reuse this for validation + selector ranking so the
  *  allowed set has a single source of truth (T2 imports it). */
-export const SKILL_ROLES: readonly SkillRole[] = ['nurse', 'psychiatrist', 'shared'];
+export const SKILL_ROLES: readonly SkillRole[] = ['nurse', 'psychiatrist', 'general-medicine'];
 
 export interface ParsedFrontmatter {
   /** Raw YAML between the `---` fences. Empty string when no fence found. */
@@ -62,7 +63,7 @@ export interface ParsedFrontmatter {
   triggers?: string[];
   /**
    * Care-team role for the T2 orchestrator's skill selector. Only a canonical
-   * value (`nurse` | `psychiatrist` | `shared`, case-insensitive, unquoted or
+   * value (`nurse` | `psychiatrist` | `general-medicine`, case-insensitive, unquoted or
    * quoted, normalized to lowercase) populates this. A `role:` line with any
    * other value is a typo and goes into `role_typo` instead — never silently
    * dropped, since a mis-tagged skill silently misroutes.

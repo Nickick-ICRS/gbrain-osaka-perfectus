@@ -45,7 +45,7 @@ Decision-support skills for the patient orchestrator. The T2 selector ranks thes
 |---------|-------|
 | "chest pain", "shortness of breath", "triage", "vital signs", "fever", "wound care" | `skills/nurse-triage/SKILL.md` (role: nurse) |
 | "suicidal", "self-harm", "mental status", "psychiatric risk", "depression", "anxiety" | `skills/psych-risk-screen/SKILL.md` (role: psychiatrist) |
-| "patient history", "medication list", "allergies", "past medical history", "medical record" | `skills/patient-history-review/SKILL.md` (role: shared) |
+| "patient history", "medication list", "allergies", "past medical history", "medical record" | `skills/patient-history-review/SKILL.md` (role: general-medicine) |
 
 ## Thinking skills (from GStack)
 
