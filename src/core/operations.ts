@@ -2659,6 +2659,64 @@ const sync_resolver: Operation = {
   cliHints: { name: 'sync-resolver' },
 };
 
+const distill_apply: Operation = {
+  name: 'distill_apply',
+  description:
+    'Task 1 authoring executor: decide (create/update/split) for a candidate TOPIC, then ' +
+    'author the skill body via a local subagent, ANONYMISE it (hard gate), and land it — write ' +
+    'the SKILL.md + routing-eval, register the manifest entry, and insert the RESOLVER row. ' +
+    '--dry-run returns the decision only (no LLM, no writes). Needs a local chat model + a ' +
+    'running `gbrain jobs work` worker. localOnly, write.',
+  params: {
+    title: { type: 'string', required: true, description: 'Candidate topic title (basis for the slug).' },
+    summary: { type: 'string', required: true, description: 'What the topic is about (also the query seed).' },
+    role: { type: 'string', required: true, description: 'Care lane: nurse | psychiatrist | general-medicine.' },
+    triggers: { type: 'array', description: 'Trigger phrases for the skill.', items: { type: 'string' } },
+    model: { type: 'string', description: 'Chat model for authoring (e.g. openrouter:qwen/...). Default: config.' },
+    dry_run: { type: 'boolean', description: 'Only run the decider; do not author or write.' },
+  },
+  handler: async (ctx, p) => {
+    const title = typeof p.title === 'string' ? p.title : '';
+    const summary = typeof p.summary === 'string' ? p.summary : '';
+    const role = typeof p.role === 'string' ? p.role : '';
+    const triggers = Array.isArray(p.triggers)
+      ? p.triggers.filter((t): t is string => typeof t === 'string')
+      : undefined;
+
+    const { SKILL_ROLES } = await import('./skill-frontmatter.ts');
+    if (!(SKILL_ROLES as readonly string[]).includes(role)) {
+      throw new OperationError('invalid_params', `role must be one of: ${SKILL_ROLES.join(', ')}`, `Got '${role}'.`);
+    }
+
+    const sc = await import('./skill-catalog.ts');
+    const { dir: skillsDir } = sc.resolveSkillsDir(ctx, await sc.readMcpSkillsDir(ctx));
+    const { loadExistingSkills } = await import('./distiller/load-skills.ts');
+    const { runDistiller } = await import('./distiller/run.ts');
+    const topic: CandidateTopic = { title, summary, role: role as CandidateTopic['role'], triggers };
+    const report = await runDistiller(topic, { loadExistingSkills: async () => loadExistingSkills(skillsDir) });
+
+    if (p.dry_run === true) return { report, applied: false };
+
+    const { executeDistillation, buildAuthorPrompt } = await import('./distiller/execute.ts');
+    const { makeFsApplySink } = await import('./distiller/apply-fs.ts');
+    const { makeQueueJobRunner } = await import('./orchestrator/execute.ts');
+    const model = typeof p.model === 'string' ? p.model : undefined;
+    const runner = makeQueueJobRunner(ctx.engine);
+
+    const author = async (args: Parameters<typeof buildAuthorPrompt>[0]): Promise<string> => {
+      const res = await runner({ prompt: buildAuthorPrompt(args), model, maxTurns: 12 });
+      if (res.status !== 'completed') throw new OperationError('storage_error', `authoring failed: ${res.error ?? 'unknown'}`);
+      return res.text.replace(/^```(?:markdown)?\s*\n?/, '').replace(/\n?```$/, '').trim();
+    };
+
+    const result = await executeDistillation(report, topic, { author, apply: makeFsApplySink(skillsDir) });
+    return { report, result, applied: true };
+  },
+  scope: 'write',
+  localOnly: true,
+  cliHints: { name: 'distill-apply', positional: ['title'] },
+};
+
 /**
  * v0.41.19.0 — `gbrain status` thin-client surface.
  *
@@ -5616,7 +5674,7 @@ export const operations: Operation[] = [
   // Task 1: distiller — decide create/update/split for a data-derived topic (read, localOnly)
   distill,
   // Task 1: batch distiller over many records + resolver categorization (localOnly)
-  distill_batch, sync_resolver,
+  distill_batch, sync_resolver, distill_apply,
   // v0.41.19.0: thin-client `gbrain status` payload (admin-scope, sync + cycle only)
   get_status_snapshot,
   // Sync
