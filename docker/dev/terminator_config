@@ -1,0 +1,22 @@
+[global_config]
+  title_hide_sizetext = True
+[keybindings]
+[profiles]
+  [[default]]
+    background_color = "#282828"
+    foreground_color = "#ebdbb2"
+    background_darkness = 0.95
+    scrollback_lines = 10000
+    show_titlebar = True
+    cursor_blink = True
+    font = Monospace 11
+    use_system_font = False
+[layouts]
+  [[default]]
+    [[[window0]]]
+      type = Window
+      parent = ""
+    [[[child1]]]
+      type = Terminal
+      parent = window0
+[plugins]

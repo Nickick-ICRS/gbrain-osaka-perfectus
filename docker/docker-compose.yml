@@ -1,0 +1,36 @@
+services:
+  gbrain:
+    hostname: gbrain-env
+    environment:
+      # Pass host user information.
+      - HOST_USER=${USER}
+      # Display X Server GUI (terminator).
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      # API keys inherited from the host env (blank if unset — PGLite needs none).
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - VOYAGE_API_KEY=${VOYAGE_API_KEY:-}
+    image: gbrain:latest
+    build:
+      context: ../
+      dockerfile: ./docker/dev/Dockerfile
+    volumes:
+      # Bind-mount the repo so you edit on the host and run in the container.
+      - ../:/app/
+      # Grant display access to the X Server.
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Keep node_modules + the brain in named volumes so the host tree stays
+      # clean and installs/data survive container rebuilds.
+      - gbrain-node-modules:/app/node_modules
+      - gbrain-bun-cache:/root/.bun/install/cache
+      - gbrain-brain:/root/.gbrain
+    network_mode: host
+    stdin_open: true
+    tty: true # pseudo-terminal: colour, line editing, command history
+    command: terminator -x bash
+
+volumes:
+  gbrain-node-modules:
+  gbrain-bun-cache:
+  gbrain-brain:

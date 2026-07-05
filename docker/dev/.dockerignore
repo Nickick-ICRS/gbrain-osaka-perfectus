@@ -1,0 +1,6 @@
+# .dockerignore
+node_modules
+bin
+.git
+.gbrain
+.gbrain-evals
