@@ -4,7 +4,7 @@
  * (hackathon_planning/00-setup-and-split.md).
  *
  * Coverage:
- *   - canonical values (nurse | psychiatrist | shared) parse to `role`
+ *   - canonical values (nurse | psychiatrist | general-medicine) parse to `role`
  *   - case-insensitivity + surrounding quotes normalize to lowercase canonical
  *   - non-canonical values populate `role_typo`, never silently drop
  *   - absent `role:` leaves both fields unset
@@ -35,7 +35,7 @@ describe('role frontmatter — canonical values', () => {
   }
 
   test('SKILL_ROLES is the exact allowed set', () => {
-    expect([...SKILL_ROLES]).toEqual(['nurse', 'psychiatrist', 'shared']);
+    expect([...SKILL_ROLES]).toEqual(['nurse', 'psychiatrist', 'general-medicine']);
   });
 });
 
@@ -49,7 +49,7 @@ describe('role frontmatter — normalization', () => {
   });
 
   test('double-quoted value parses', () => {
-    expect(parseSkillFrontmatter(fm('role: "shared"'))?.role).toBe('shared');
+    expect(parseSkillFrontmatter(fm('role: "general-medicine"'))?.role).toBe('general-medicine');
   });
 
   test('single-quoted value parses', () => {
@@ -57,7 +57,7 @@ describe('role frontmatter — normalization', () => {
   });
 
   test('trailing whitespace tolerated', () => {
-    expect(parseSkillFrontmatter(fm('role:    shared   '))?.role).toBe('shared');
+    expect(parseSkillFrontmatter(fm('role:    general-medicine   '))?.role).toBe('general-medicine');
   });
 });
 
@@ -111,7 +111,7 @@ describe('role frontmatter — absence', () => {
 
 describe('SkillRole type', () => {
   test('assignment compiles for each canonical value', () => {
-    const roles: SkillRole[] = ['nurse', 'psychiatrist', 'shared'];
+    const roles: SkillRole[] = ['nurse', 'psychiatrist', 'general-medicine'];
     expect(roles).toHaveLength(3);
   });
 });

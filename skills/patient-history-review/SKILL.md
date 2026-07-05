@@ -2,7 +2,7 @@
 name: patient-history-review
 version: 1.0.0
 description: |
-  Role-agnostic patient history retrieval. Pulls and summarizes a patient's
+  Generalist patient history retrieval. Pulls and summarizes a patient's
   medical record from the brain — history, medications, allergies — as a
   sourced brief for either a nursing or psychiatric review. Read-only
   decision-support.
@@ -12,7 +12,7 @@ triggers:
   - "allergies"
   - "past medical history"
   - "medical record"
-role: shared
+role: general-medicine
 tools:
   - search
   - query
@@ -24,9 +24,10 @@ mutating: false
 # patient-history-review — sourced patient history brief
 
 Use this skill when either lane (nurse or psychiatrist) needs the patient's
-existing record assembled before they act. It is deliberately `role: shared`:
-the T2 orchestrator can select it ahead of a nurse or a psychiatrist skill in
-the same routing pass. It retrieves and summarizes; it does not assess.
+existing record assembled before they act. It is deliberately
+`role: general-medicine` — the generalist lane, so the T2 orchestrator can
+select it ahead of a nurse or a psychiatrist skill in the same routing pass. It
+retrieves and summarizes; it does not assess.
 
 > **Convention:** brain-first — this skill IS the brain-first lookup that other
 > care skills build on. See `skills/conventions/brain-first.md`.
@@ -71,7 +72,7 @@ This skill is the lookup:
   clinical recommendation. The nurse/psychiatrist skills do that.
 - **APPI / 要配慮個人情報.** The record is special-care personal information
   under Japan's APPI. Stay strictly within the patient's source scope
-  (`sourceScopeOpts`) — a shared skill is the highest-risk place for a
-  cross-patient leak. Every auto-run is auditable.
+  (`sourceScopeOpts`) — a cross-cutting generalist skill is the highest-risk
+  place for a cross-patient leak. Every auto-run is auditable.
 - **Gaps are findings.** An incomplete record is a result to report, never a
   detail to paper over.
