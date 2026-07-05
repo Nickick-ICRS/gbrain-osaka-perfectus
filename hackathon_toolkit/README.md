@@ -46,9 +46,10 @@ bash run.sh    "reports chest pain and shortness of breath"       # ranks + exec
   `anonymise.py` (PII gate), `docx2md.py` (docx→md), `test-local-pipeline.sh`, `orchestrate-smoke.sh`.
 - Learned skills land in `../skills/<slug>/SKILL.md` (git-tracked) + rows in `RESOLVER.md` / `manifest.json`.
 
-## Known limitation (local model)
-`select.sh` (the LLM selector) is reliable. `run.sh` executes each skill via an inline
-worker — but skills that make **several brain lookups** can trip the local Qwen's
-parallel-tool-call handling (`tool results are missing for tool calls …`). Single-lookup
-flows run clean. Proper fix (provider-level `parallel_tool_calls: false`, or a
-sequential-tool model) is a tracked follow-up in PROGRESS.md.
+## Execution mode (local model)
+Both `select.sh` (LLM selector) and `run.sh` (rank + execute) are reliable on the local
+Qwen 27b. `run.sh` executes each skill via **toolless synthesis**: the skill's `SKILL.md`
+body is inlined into the prompt and the subagent runs with no tools (a single synthesis
+turn), so it doesn't depend on the local model's fragile multi/parallel tool-call handling.
+The legacy tool-driven path stays available for Postgres/robust-tool-calling deployments.
+See PROGRESS.md for details.

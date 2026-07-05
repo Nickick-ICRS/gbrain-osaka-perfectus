@@ -2386,6 +2386,10 @@ const orchestrate_run: Operation = {
       runner,
       model,
       loadBrief: (role) => loadRoleBrief(rolesDir, role),
+      // Toolless-synthesis execution: inline the skill body + run with no tools.
+      // Reliable on local openai-compatible models (the tool loop's parallel
+      // tool-call reconciliation breaks qwen-via-LM-Studio). See execute.ts.
+      skillsDir,
     });
     return orchestrateLoop(
       { input: { text: input, patientId }, history: [], now: new Date(), remote: ctx.remote },

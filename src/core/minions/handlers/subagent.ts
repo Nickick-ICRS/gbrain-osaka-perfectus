@@ -247,9 +247,11 @@ export function makeSubagentHandler(deps: SubagentDeps) {
       brainId: data.brain_id,
       allowedSlugPrefixes: data.allowed_slug_prefixes,
     });
-    const toolDefs = data.allowed_tools && data.allowed_tools.length > 0
-      ? filterAllowedTools(registry, data.allowed_tools)
-      : registry;
+    const toolDefs = data.no_tools
+      ? []
+      : data.allowed_tools && data.allowed_tools.length > 0
+        ? filterAllowedTools(registry, data.allowed_tools)
+        : registry;
 
     // v0.41 Approach C: render the final system prompt now that toolDefs
     // is known. Splices a deterministic tool-usage preamble listing each
