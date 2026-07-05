@@ -1,0 +1,37 @@
+{
+  "name": "gbrain",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+
+  // node_modules and the bun install cache live in named volumes so the
+  // host working tree stays clean and installs stay warm across rebuilds.
+  // (Same isolation pattern as docker-compose.ci.yml's runner service.)
+  "mounts": [
+    "source=gbrain-node-modules,target=/app/node_modules,type=volume",
+    "source=gbrain-bun-cache,target=/root/.bun/install/cache,type=volume"
+  ],
+
+  "postCreateCommand": "bun install",
+
+  "remoteUser": "root",
+
+  // Fill these in .devcontainer/devcontainer.local.json or via the VS Code
+  // "remoteEnv" UI — do NOT commit real keys. PGLite needs none of them;
+  // they're only for embeddings (OpenAI) and synthesis (Anthropic).
+  "remoteEnv": {
+    "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "oven.bun-vscode"
+      ]
+    }
+  }
+}

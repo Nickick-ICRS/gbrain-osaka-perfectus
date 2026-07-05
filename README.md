@@ -427,6 +427,32 @@ completes in ~1-2 seconds. (Closes #1605, #1581.)
 
 ## Contributing
 
+### Dev container (recommended — no toolchain on your host)
+
+GBrain runs on [Bun](https://bun.sh). If you'd rather not install it on your host, the repo ships a dev container that keeps the whole toolchain — Bun, `node_modules`, the install cache — inside Docker. Your working tree stays clean.
+
+**VS Code / Cursor:** open the repo and run **"Dev Containers: Reopen in Container"** (needs the Dev Containers extension + Docker). It builds `.devcontainer/`, runs `bun install`, and drops you in a shell at `/app`.
+
+**Plain Docker** (no editor integration):
+
+```bash
+docker build -f .devcontainer/Dockerfile -t gbrain-dev .devcontainer
+docker run --rm -it \
+  -v "$PWD":/app -w /app \
+  -v gbrain-node-modules:/app/node_modules \
+  -v gbrain-bun-cache:/root/.bun/install/cache \
+  gbrain-dev bash
+# inside the container:
+bun install                # first run only (cached in a named volume after)
+bun run dev init --pglite  # 2-second local brain, no server, no DB
+bun run dev --help
+bun test                   # unit suite (PGLite, no DB required)
+```
+
+`node_modules` and the Bun cache live in named Docker volumes, so nothing is written to your host tree and installs stay warm across rebuilds. PGLite needs no database; only embeddings (OpenAI) and synthesis (Anthropic) need API keys — set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` in your host env and the container inherits them. The full E2E suite additionally needs pgvector Postgres via `docker compose -f docker-compose.ci.yml up`.
+
+### Test loops
+
 Run `bun run test` for the fast loop, `bun run verify` for the pre-push gate, `bun run ci:local` to run the full Docker-backed CI stack locally. Detailed test discipline in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Community PRs are batched into release waves rather than merged one-by-one — see the "PR wave workflow" section in [`CLAUDE.md`](CLAUDE.md). Contributor attribution stays attached via `Co-Authored-By:` trailers. We credit every accepted contribution in [`CHANGELOG.md`](CHANGELOG.md).
