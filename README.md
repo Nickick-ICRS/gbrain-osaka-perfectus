@@ -12,7 +12,7 @@ leaving the machine** — a hard requirement for handling 要配慮個人情報
 never autonomous diagnosis**, and no resident-identifying data is ever written
 into a reusable skill.
 
-**📊 [Pitch deck →](https://docs.google.com/presentation/d/18MxuXQ6JaM5t4s0EeEaxo8lZ9Dq8PjpRzDeADUQjZhY/edit?usp=sharing)**
+**📊 [Pitch deck →](https://drive.google.com/file/d/1SJUdItG-fjprLd3IHqE6g2V8fY4yH7P_/view)**
 
 ---
 
@@ -20,7 +20,7 @@ into a reusable skill.
 
 GBrain gives us the substrate: a local knowledge brain (embedded Postgres via
 PGLite), hybrid retrieval, and a skill/agent framework. On top of it we added
-four things.
+three things.
 
 ### 1. A skill distiller — brain data → anonymised, routable skills
 
@@ -63,13 +63,6 @@ skills that were refused patient data.
 - `src/dashboard/` — `server.ts` (Bun.serve, no npm deps) drives the **real**
   pipeline through instrumented seams; the APPI gate is never bypassed.
 - Suggest-only: it never executes skills.
-
-### 4. Care-team debate (Task 4, planned)
-
-The design for the agents to **debate the correct course of action** and arbitrate
-by **weighted majority vote** (general-medicine = 2, psychiatrist = 2, nurse = 1),
-with hard clinical-safety precedence overriding the vote. Spec:
-[`hackathon_planning/task4-agent-debate.md`](hackathon_planning/task4-agent-debate.md).
 
 ---
 
