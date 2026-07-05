@@ -73,7 +73,7 @@ timeout 240 "${GB[@]}" query "What behavioral issues and fall risks are recorded
 # ── 4. subagent tool loop — the real Task-1 distillation test ────────────────
 hr "4. Subagent tool loop: distill a Nurse skill draft from the brain"
 cat > /tmp/skill-task.json <<JSON
-{"prompt":"You are distilling stored nursing-home brain data into a reusable Nurse skill. First call the query tool to find behavioral and fall-risk transmission notes about residents. Then write a concise draft SKILL.md body in markdown (about 15 lines) with a title line, a one-sentence purpose, a when-to-use trigger list, and 3 to 5 decision-support steps grounded in what you found. Frame it as decision support, not diagnosis. Output only the markdown.","model":"$CHAT_MODEL","max_turns":8}
+{"prompt":"You are distilling stored nursing-home brain data into a reusable Nurse skill. First call the query tool to find behavioral and fall-risk transmission patterns. Then write a concise draft SKILL.md body in markdown (about 15 lines) with a title line, a one-sentence purpose, a when-to-use trigger list, and 3 to 5 decision-support steps describing the GENERAL clinical pattern. Frame it as decision support, not diagnosis. ANONYMISE: never include resident/patient names or initials, room numbers, ages, dates, or facility names — refer to 'a resident' generically. Output only the markdown.","model":"$CHAT_MODEL","max_turns":8}
 JSON
 echo "  params: $(cat /tmp/skill-task.json)"
 echo "  running (inline worker; allow a few minutes)..."

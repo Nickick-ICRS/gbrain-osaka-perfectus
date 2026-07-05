@@ -7,11 +7,14 @@
 # write skills/<slug>/SKILL.md → append a RESOLVER.md row under "## Patient care" →
 # validate with check-resolvable.
 #
+# Generated skills are ANONYMISED: the authoring prompt forbids identifiers and
+# the body is piped through anonymise.py (hard gate — aborts on residual PII).
+#
 # RUN INSIDE THE CONTAINER, e.g.:
 #   SLUG=nurse-behavioral-fall-risk ROLE=nurse \
 #   TRIGGERS='agitation,wandering,fall risk,behavioral change,post-fall review' \
-#   DESC='Nurse decision-support for behavioral change and fall-risk monitoring in dementia residents.' \
-#   TOPIC='resident behavioral transmission notes (agitation, wandering, urinating in hallways, fall events) and the Geriatric Care Assistant (ASG) role protocol' \
+#   DESC='Nurse decision-support for behavioral change and fall-risk monitoring in dementia care.' \
+#   TOPIC='behavioral transmission patterns (agitation, wandering, fall events) and the Geriatric Care Assistant (ASG) daily protocol' \
 #   bash /app/hackathon_planning/distill-skill.sh
 set -uo pipefail
 
@@ -38,7 +41,7 @@ cd /app
 rm -rf "$BRAIN/.gbrain-lock" "$BRAIN/postmaster.pid" 2>/dev/null || true
 
 echo "════ 1. Author SKILL body via subagent (grounded in brain) ════"
-PROMPT="You are distilling stored nursing-home brain data into the BODY of a reusable ${ROLE} decision-support skill named '${SLUG}'. First call the query tool 2-3 times to gather what the brain knows about: ${TOPIC}. Then write a SKILL.md body in GitHub-flavored markdown that MATCHES this structure exactly: (1) an H1 line '# ${SLUG} — <short human title>'; (2) a 2-3 sentence intro; (3) '## Phase 1: Brain-First Lookup' telling the user to run gbrain query for the patient's context first; (4) '## Contract' with Input, Output, and 'Side effect: none by default (mutating: false)'; (5) '## When to invoke' as a bullet list; (6) '## Procedure' as a numbered list of 4-6 steps GROUNDED in the actual resident behaviors, scales, or protocol duties you found in the brain (reference them concretely); (7) '## Guardrails' that includes a 'Decision support, not diagnosis' bullet and an 'APPI / 要配慮個人情報' source-isolation bullet. Output ONLY the markdown body starting at the '# ' line. Do NOT include YAML frontmatter. Do NOT wrap the output in code fences."
+PROMPT="You are distilling stored nursing-home brain data into the BODY of a reusable ${ROLE} decision-support skill named '${SLUG}'. First call the query tool 2-3 times to gather what the brain knows about: ${TOPIC}. Then write a SKILL.md body in GitHub-flavored markdown that MATCHES this structure exactly: (1) an H1 line '# ${SLUG} — <short human title>'; (2) a 2-3 sentence intro; (3) '## Phase 1: Brain-First Lookup' telling the user to run gbrain query for the patient's context first; (4) '## Contract' with Input, Output, and 'Side effect: none by default (mutating: false)'; (5) '## When to invoke' as a bullet list; (6) '## Procedure' as a numbered list of 4-6 steps grounded in the GENERAL clinical patterns, scales, and protocol duties relevant to this topic (describe the pattern, not a person); (7) '## Guardrails' that includes a 'Decision support, not diagnosis' bullet and an 'APPI / 要配慮個人情報' source-isolation bullet. CRITICAL — ANONYMISE: a skill is a REUSABLE TEMPLATE, never about one individual or place. Do NOT include ANY resident/patient/caregiver names or initials, room or bed numbers, ages, admission or institutionalization durations, dates, or facility/hospital/organization names. Always refer to people generically ('a resident', 'the resident', 'the caregiver', 'the clinician'). You MAY name standard clinical instruments and protocols generically (MMSE, AGGIR, HAD, PASA, ASG, EHPAD, NPI-ES). Describe behaviors and steps as general clinical guidance, not as a specific case. Output ONLY the markdown body starting at the '# ' line. Do NOT include YAML frontmatter. Do NOT wrap the output in code fences."
 PARAMS=$(python3 -c "import json,sys;print(json.dumps({'prompt':sys.argv[1],'model':sys.argv[2],'max_turns':12}))" "$PROMPT" "$CHAT_MODEL")
 
 LOG=$(mktemp)
@@ -60,6 +63,14 @@ PY
 
 if [ -z "$BODY" ] || ! grep -q '^# ' <<<"$BODY"; then echo "✗ authored body empty/malformed"; exit 1; fi
 echo "  ✓ authored $(wc -l <<<"$BODY") lines"
+
+echo "════ 1b. Anonymise — strip any residual PII / facility names (hard gate) ════"
+BODY=$(printf '%s\n' "$BODY" | python3 "$(dirname "$0")/anonymise.py") || {
+  echo "✗ anonymiser found identifiers it could not safely scrub — NOT writing the skill."
+  echo "  Tighten the authoring prompt or extend anonymise.py, then re-run."
+  exit 1
+}
+echo "  ✓ anonymised (no residual identifiers)"
 
 echo "════ 2. Assemble skills/$SLUG/SKILL.md (deterministic frontmatter + body) ════"
 mkdir -p "$SKILLS/$SLUG"

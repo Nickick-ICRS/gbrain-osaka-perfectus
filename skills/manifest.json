@@ -270,16 +270,6 @@
       "description": "Nursing intake & triage decision-support: structures presenting symptoms + vitals against the patient's brain history and recommends an escalation level. Decision support only."
     },
     {
-      "name": "psych-caregiver-burden-support",
-      "path": "psych-caregiver-burden-support/SKILL.md",
-      "description": "Psychiatric decision-support for assessing and supporting family-caregiver burden and mood in dementia care. Decision support only — a licensed clinician confirms every recommendation."
-    },
-    {
-      "name": "nurse-behavioral-fall-risk",
-      "path": "nurse-behavioral-fall-risk/SKILL.md",
-      "description": "Nurse decision-support for behavioral change and fall-risk monitoring in dementia residents. Decision support only."
-    },
-    {
       "name": "psych-risk-screen",
       "path": "psych-risk-screen/SKILL.md",
       "description": "Psychiatric risk-screening decision-support: structures a mental-status picture and a self-harm/suicidality risk level from the concern + brain history. Decision support only."
