@@ -112,6 +112,10 @@ If a fixture passes, the slice is done. Build toward the fixtures, not toward "f
 A's foundations have landed (#2 contract, #3 seed skills + fixtures) — B and C build
 against real code; no mock needed.
 
+Status: **C** — Task 2 orchestrator template + healthcare custom-skill gate in PR
+(`worktree-nick+orchestrator-work`); LLM selector, `list_skills` wiring, and op registration
+remain. **B** — Task 1 not yet started.
+
 ## Demo target (what "done" looks like at the end)
 
 End-to-end: a sample patient input →`orchestrate_input` pulls history + ranks skills → runs the
@@ -124,3 +128,8 @@ Both proven by the shared `routing-eval` fixtures.
 Patient data is sensitive under Japan's APPI (要配慮個人情報). Keep source-isolation
 (`sourceScopeOpts`), an audit trail of what gets auto-run, and treat skills as decision
 support — not autonomous diagnosis. Decide the auto-run boundary as a team, early.
+
+**Team policy (T2, landed):** patient/healthcare data is routed ONLY to our own role-tagged
+clinical skills — never generic GBrain skills. Enforced in
+`src/core/orchestrator/custom-skills.ts` (allowlist by `SKILL_ROLES` + `excluded_generic` audit
+trail + fail-closed `assertAllCustom`).
