@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GBrain — Care-Team Orchestrator</title>
+<style>
+  /* Deliberate single-theme: a dark clinical ops console. */
+  :root {
+    --bg: #0d1117;
+    --panel: #151b24;
+    --panel-2: #1b2330;
+    --line: #263041;
+    --text: #dbe4f0;
+    --muted: #7d8ba1;
+    --nurse: #2dd4bf;
+    --psych: #a78bfa;
+    --genmed: #f4b64a;
+    --danger: #f47174;
+    --ok: #6ee7a0;
+    --font: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Hiragino Sans", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font);
+    min-height: 100vh; font-size: 15px; line-height: 1.5;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    padding: 14px 22px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 17px; font-weight: 650; letter-spacing: .2px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header .conn { margin-left: auto; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  header .conn.on { color: var(--ok); }
+
+  main {
+    display: grid; gap: 16px; padding: 16px 22px 28px;
+    grid-template-columns: minmax(280px, 1fr) minmax(420px, 1.4fr) minmax(300px, 1.1fr);
+    align-items: start;
+  }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .panel h2 {
+    font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---- input ---- */
+  textarea {
+    width: 100%; min-height: 260px; resize: vertical;
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 13px; line-height: 1.55;
+  }
+  textarea:focus { outline: 2px solid #3b82f680; outline-offset: 1px; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+  .controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  button#run {
+    background: #2563eb; color: #fff; border: 0; border-radius: 8px;
+    padding: 9px 22px; font-size: 14px; font-weight: 650; cursor: pointer;
+  }
+  button#run:hover { background: #1d4ed8; }
+  button#run:disabled { background: #33415580; color: var(--muted); cursor: default; }
+  button#run:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+  label.toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); cursor: pointer; }
+
+  /* ---- agent stage ---- */
+  .stage { display: flex; justify-content: space-around; gap: 8px; padding: 8px 0 2px; }
+  .agent { display: flex; flex-direction: column; align-items: center; gap: 9px; width: 31%; min-width: 130px; }
+  .bubble {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 7px 10px; font-size: 12px; color: var(--muted); text-align: center;
+    min-height: 52px; width: 100%; display: flex; align-items: center; justify-content: center;
+    position: relative; transition: border-color .3s;
+  }
+  .bubble::after {
+    content: ""; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg);
+    width: 10px; height: 10px; background: var(--panel-2);
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .circle {
+    width: 92px; height: 92px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; border: 3px solid var(--c); color: var(--c);
+    background: color-mix(in srgb, var(--c) 12%, transparent);
+    transition: box-shadow .3s, opacity .3s, transform .3s;
+  }
+  .agent[data-state="idle"] .circle,
+  .agent[data-state="standby"] .circle { opacity: .38; }
+  .agent[data-state="reviewing"] .circle { animation: pulse 1.6s ease-in-out infinite; }
+  .agent[data-state="deliberating"] .circle { animation: pulse .8s ease-in-out infinite; }
+  .agent[data-state="selected"] .circle {
+    box-shadow: 0 0 22px color-mix(in srgb, var(--c) 55%, transparent); transform: scale(1.06);
+  }
+  .agent[data-state="deliberating"] .bubble { border-color: var(--c); color: var(--text); }
+  .agent[data-state="selected"] .bubble { border-color: var(--c); color: var(--text); }
+  @keyframes pulse { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--c) 45%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .circle { animation: none !important; transform: none !important; } }
+  .aname { font-weight: 650; font-size: 13.5px; color: var(--c); }
+  .askills { font-size: 11px; color: var(--muted); text-align: center; min-height: 16px; }
+  .votebar { width: 100%; height: 7px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; }
+  .votebar > div { height: 100%; width: 0%; background: var(--c); transition: width .5s ease; }
+  .votelabel { font-family: var(--mono); font-size: 11px; color: var(--muted); min-height: 15px; }
+
+  .decisions { display: flex; flex-direction: column; gap: 7px; }
+  .decision {
+    border-left: 3px solid var(--c); background: var(--panel-2); border-radius: 0 8px 8px 0;
+    padding: 7px 11px; font-size: 12.5px;
+  }
+  .decision.standby { opacity: .55; }
+  .decision b { color: var(--c); }
+
+  .ticker {
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    border-top: 1px dashed var(--line); padding-top: 9px;
+    display: flex; flex-direction: column-reverse; gap: 3px; max-height: 120px; overflow-y: auto;
+  }
+  .ticker .err { color: var(--danger); }
+
+  /* ---- output ---- */
+  .steps { display: flex; flex-direction: column; gap: 9px; }
+  .step {
+    background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--c);
+    border-radius: 8px; padding: 10px 12px;
+  }
+  .step .top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .step .rank { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+  .step .skill { font-weight: 700; font-size: 14px; }
+  .step .conf { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--c); }
+  .step .why { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .rolechip {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--bg); background: var(--c); border-radius: 99px; padding: 1.5px 8px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 12px; font-family: var(--mono); color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 99px; padding: 2.5px 10px;
+  }
+  .audit { font-size: 12px; color: var(--muted); }
+  .audit code { font-family: var(--mono); font-size: 11.5px; }
+  .empty { color: var(--muted); font-size: 13px; font-style: italic; }
+  .note {
+    font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Care-Team Orchestrator</h1>
+  <span class="sub">paste history → agents deliberate → suggested next steps (decision support, not diagnosis)</span>
+  <span class="conn" id="conn">connecting…</span>
+</header>
+
+<main>
+  <!-- 1. INPUT -->
+  <section class="panel">
+    <h2>Patient history — paste data to date</h2>
+    <textarea id="paste" spellcheck="false" placeholder="One event per line, oldest first. The LAST line is the current presentation.
+
+2026-03-01 62yo with hypertension on lisinopril, routine review
+2026-03-04 reports intermittent palpitations, ECG normal
+2026-03-09 presents with chest pain and shortness of breath"></textarea>
+    <div class="hint">Each line = one historical event; the last line is what the team routes on. Dates/bullets are stripped automatically.</div>
+    <div class="controls">
+      <button id="run">Run orchestrator</button>
+      <label class="toggle"><input type="checkbox" id="useLlm" /> LLM ranker (needs a configured chat model)</label>
+    </div>
+  </section>
+
+  <!-- 3. LIVE AGENTS -->
+  <section class="panel">
+    <h2>Care-team agents — live</h2>
+    <div class="stage" id="stage"></div>
+    <h2 style="margin-top:6px">Current decisions</h2>
+    <div class="decisions" id="decisions"><div class="empty">No round run yet.</div></div>
+    <div class="ticker" id="ticker"></div>
+  </section>
+
+  <!-- 2. OUTPUT -->
+  <section class="panel">
+    <h2>Suggested next action steps</h2>
+    <div class="steps" id="steps"><div class="empty">Run the orchestrator to get ranked next steps.</div></div>
+    <h2 style="margin-top:6px">Key medical terms detected</h2>
+    <div class="chips" id="terms"><span class="empty">—</span></div>
+    <div class="audit" id="audit"></div>
+    <div class="note">Patient data is routed <b>only</b> to role-tagged clinical skills — generic brain skills are refused and listed in the audit line. A clinician reviews every suggestion.</div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const ROLE_META = {
+  "nurse":            { label: "Nurse",            color: "var(--nurse)",  icon: "🩺" },
+  "psychiatrist":     { label: "Psychiatrist",     color: "var(--psych)",  icon: "🧠" },
+  "general-medicine": { label: "General medicine", color: "var(--genmed)", icon: "⚕️" },
+};
+const ROLES = Object.keys(ROLE_META);
+
+// --- build the three agent circles ---
+const stage = document.getElementById("stage");
+for (const role of ROLES) {
+  const m = ROLE_META[role];
+  const el = document.createElement("div");
+  el.className = "agent"; el.dataset.role = role; el.dataset.state = "idle";
+  el.style.setProperty("--c", m.color);
+  el.innerHTML = `
+    <div class="bubble" data-bubble>Waiting for input…</div>
+    <div class="circle">${m.icon}</div>
+    <div class="aname">${m.label}</div>
+    <div class="askills" data-skills></div>
+    <div class="votebar"><div data-votefill></div></div>
+    <div class="votelabel" data-votelabel>no vote</div>`;
+  stage.appendChild(el);
+}
+
+const $ = (id) => document.getElementById(id);
+const conn = $("conn"), ticker = $("ticker"), decisions = $("decisions"),
+      steps = $("steps"), terms = $("terms"), audit = $("audit"),
+      runBtn = $("run"), paste = $("paste"), useLlm = $("useLlm");
+
+function tick(text, isErr) {
+  const line = document.createElement("div");
+  if (isErr) line.className = "err";
+  line.textContent = `${new Date().toLocaleTimeString()}  ${text}`;
+  ticker.appendChild(line);
+  while (ticker.children.length > 40) ticker.removeChild(ticker.firstChild);
+}
+
+// --- event rendering (queued so the fast pipeline stays watchable) ---
+const queue = [];
+let draining = false;
+function enqueue(ev) { queue.push(ev); if (!draining) drain(); }
+function drain() {
+  if (queue.length === 0) { draining = false; return; }
+  draining = true;
+  render(queue.shift());
+  // pace state-changing events so humans can follow; drain fully at the end
+  const delay = queue.length > 0 && queue[0].type !== "report" ? 550 : 150;
+  setTimeout(drain, delay);
+}
+
+function render(ev) {
+  if (ev.type === "stage") {
+    tick(ev.stage + (ev.detail ? ` — ${ev.detail}` : ""));
+    if (ev.stage === "done") runBtn.disabled = false;
+    return;
+  }
+  if (ev.type === "error") {
+    tick(ev.message, true);
+    runBtn.disabled = false;
+    return;
+  }
+  if (ev.type === "agents") {
+    let anyDecision = false;
+    for (const a of ev.agents) {
+      const el = stage.querySelector(`[data-role="${a.role}"]`);
+      if (!el) continue;
+      el.dataset.state = a.state;
+      el.querySelector("[data-bubble]").textContent = a.action;
+      el.querySelector("[data-skills]").textContent = a.skills.join(", ");
+      const fill = el.querySelector("[data-votefill]");
+      const vl = el.querySelector("[data-votelabel]");
+      if (a.vote === null) { fill.style.width = "0%"; vl.textContent = "no vote"; }
+      else { fill.style.width = `${Math.round(a.vote * 100)}%`; vl.textContent = `vote ${a.vote.toFixed(2)}`; }
+      if (a.decision) anyDecision = true;
+    }
+    if (anyDecision) {
+      decisions.innerHTML = "";
+      for (const a of ev.agents) {
+        if (!a.decision) continue;
+        const d = document.createElement("div");
+        d.className = "decision" + (a.state === "standby" ? " standby" : "");
+        d.style.setProperty("--c", ROLE_META[a.role].color);
+        d.innerHTML = `<b>${ROLE_META[a.role].label}:</b> `;
+        d.appendChild(document.createTextNode(a.decision));
+        decisions.appendChild(d);
+      }
+    }
+    return;
+  }
+  if (ev.type === "votes") {
+    tick("votes in: " + ev.votes.map(v => `${v.role}=${v.vote.toFixed(2)}`).join("  "));
+    return;
+  }
+  if (ev.type === "report") {
+    steps.innerHTML = "";
+    if (ev.nextSteps.length === 0) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "No clinical skill matched this input" +
+        (ev.report.notes.length ? ` — ${ev.report.notes.join(" ")}` : ".");
+      steps.appendChild(e);
+    }
+    for (const s of ev.nextSteps) {
+      const el = document.createElement("div");
+      el.className = "step";
+      el.style.setProperty("--c", ROLE_META[s.role]?.color ?? "var(--muted)");
+      const why = document.createElement("div");
+      why.className = "why";
+      why.textContent = s.reason || "";
+      el.innerHTML = `
+        <div class="top">
+          <span class="rank">#${s.rank}</span>
+          <span class="skill">${s.skill}</span>
+          <span class="rolechip">${ROLE_META[s.role]?.label ?? s.role}</span>
+          <span class="conf">${s.confidence.toFixed(2)}</span>
+        </div>`;
+      el.appendChild(why);
+      steps.appendChild(el);
+    }
+    terms.innerHTML = ev.keyTerms.length ? "" : '<span class="empty">—</span>';
+    for (const t of ev.keyTerms) {
+      const c = document.createElement("span");
+      c.className = "chip"; c.textContent = t;
+      terms.appendChild(c);
+    }
+    audit.textContent = ev.report.excluded_generic.length
+      ? `Audit: ${ev.report.excluded_generic.length} generic skill(s) refused patient data (${ev.report.excluded_generic.slice(0, 6).join(", ")}${ev.report.excluded_generic.length > 6 ? ", …" : ""}) · selector: ${ev.selector}`
+      : `Audit: no generic skills matched · selector: ${ev.selector}`;
+    tick(`report — ${ev.nextSteps.length} recommendation(s), selector=${ev.selector}`);
+    return;
+  }
+}
+
+// --- transport: WebSocket with POST fallback ---
+let ws = null, wsOk = false;
+function connect() {
+  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
+  ws.onopen = () => { wsOk = true; conn.textContent = "● live"; conn.classList.add("on"); };
+  ws.onmessage = (m) => { try { enqueue(JSON.parse(m.data)); } catch {} };
+  ws.onclose = () => {
+    wsOk = false; conn.textContent = "○ reconnecting…"; conn.classList.remove("on");
+    setTimeout(connect, 2000);
+  };
+}
+connect();
+
+async function runViaPost(body) {
+  try {
+    const res = await fetch("/api/orchestrate", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    for (const ev of data.events ?? []) enqueue(ev);
+  } catch (err) {
+    enqueue({ type: "error", message: `request failed: ${err.message}` });
+  }
+}
+
+runBtn.addEventListener("click", () => {
+  const body = { type: "orchestrate", paste: paste.value, useLlm: useLlm.checked };
+  if (!body.paste.trim()) { tick("paste some patient history first", true); return; }
+  runBtn.disabled = true;
+  // reset per-run panels
+  decisions.innerHTML = '<div class="empty">Deliberating…</div>';
+  if (wsOk) ws.send(JSON.stringify(body));
+  else runViaPost(body);
+});
+</script>
+</body>
+</html>
